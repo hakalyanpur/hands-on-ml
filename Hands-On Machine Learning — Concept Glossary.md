@@ -71,6 +71,17 @@
 |**Estimator**|Any object that learns from data (has a `fit()` method)|`SimpleImputer`, `RandomForestRegressor`|
 |**Transformer**|An estimator that can also transform data (has `transform()`)|`StandardScaler`, `OneHotEncoder`|
 |**Predictor**|An estimator that can make predictions (has `predict()`)|`LinearRegression`, `DecisionTreeClassifier`|
+|**TransformedTargetRegressor**|A wrapper that automatically scales the target variable during training and inverse-transforms predictions|`TransformedTargetRegressor(LinearRegression(), transformer=StandardScaler())`|
+
+---
+
+## Target Scaling
+
+|Term|Definition|Example|
+|---|---|---|
+|**Target Scaling**|Transforming the output variable (y) to a normalized range before training|Scaling house prices to mean=0, std=1 before fitting a model|
+|**Why Scale Targets**|Helps gradient-based models converge faster; prevents numerical issues with large values|Neural networks train better when targets aren't in the hundreds of thousands|
+|**Inverse Transform**|Converting scaled predictions back to original units|`scaler.inverse_transform(predictions)` turns z-scores back into dollar values|
 
 ---
 
