@@ -1,7 +1,11 @@
 # Chapter 2 — Concepts & Theory
 
 > **Notebook reference:** `notebooks/02_end_to_end_machine_learning_project.ipynb`
-> Each section below maps to concepts used in the notebook's 5 phases.
+> Organized to follow the notebook's 5 phases — scroll to the phase you're working on.
+
+---
+
+# Phase 1: Data & Preprocessing
 
 ---
 
@@ -52,11 +56,11 @@ Use stratified sampling when:
 
 ---
 
-# Scikit-Learn Preprocessing Pipeline
+## Scikit-Learn Preprocessing Pipeline
 
 ---
 
-## Without Pipeline
+### Without Pipeline
 
 ### Training Data
 
@@ -92,7 +96,7 @@ CLEAN, SCALED TEST DATA
 
 ---
 
-## With Pipeline
+### With Pipeline
 
 ### Training Data
 
@@ -138,7 +142,7 @@ CLEAN, SCALED TEST DATA
 
 ---
 
-## Key Rules
+### Key Rules
 
 | | Training Data | Test Data |
 |---|---|---|
@@ -146,6 +150,10 @@ CLEAN, SCALED TEST DATA
 | `StandardScaler` | `fit()` + `transform()` | `transform()` only |
 
 > **Pipeline guarantees**: correct step order, no accidental `fit()` on test data, and clean cross-validation with no data leakage.
+
+---
+
+# Phase 2: Model Exploration
 
 ---
 
@@ -439,7 +447,11 @@ RandomForest:          ~$18k           $47k          $29k      Still some overfi
 
 ---
 
-## Hyperparameter Tuning (Grid Search)
+# Phase 3: Hyperparameter Tuning
+
+---
+
+## Grid Search
 
 ### Parameters vs Hyperparameters
 
@@ -674,6 +686,10 @@ Step 2: GridSearch around the best values found
 
 ---
 
+# Phase 4: Analyze the Best Model
+
+---
+
 ## Feature Importances
 
 ### What they measure
@@ -723,6 +739,10 @@ sorted(zip(importances, names), reverse=True)
 ### Limitations
 
 Feature importances can be **misleading** when features are correlated. If two features carry similar information (e.g., `total_rooms` and `total_bedrooms`), the model might split the importance between them — making both look less important than they really are. This doesn't mean either feature is unimportant; it means their contributions are shared.
+
+---
+
+# Phase 5: Evaluate on Test Set
 
 ---
 
