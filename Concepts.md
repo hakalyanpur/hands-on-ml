@@ -153,6 +153,151 @@ CLEAN, SCALED TEST DATA
 
 ---
 
+## Feature Engineering
+
+Feature engineering transforms raw columns into forms that are more meaningful to a model. The goal: make the **signal** in the data easier to learn. Below are the five techniques used in the notebook, each with raw data examples showing *why* the transform matters.
+
+### Ratio Features
+
+Raw counts are meaningless without context. Two districts can have the same `total_rooms` but tell completely different stories:
+
+```
+Raw data (3 districts):
+  district    total_rooms    households    total_bedrooms
+  A           6,000          120           1,500
+  B           6,000          3,000         4,800
+  C           900            300           700
+
+A and B have the same total_rooms, but are they similar?
+
+After ratios:
+  district    rooms_per_house    bedrooms_ratio    people_per_house
+  A           50.0               0.25              ...
+  B           2.0                0.80              ...
+  C           3.0                0.78              ...
+
+Now the model sees: A is spacious (50 rooms/house, only 25% bedrooms)
+                     B is cramped (2 rooms/house, 80% are bedrooms)
+                     C is similar to B in density
+```
+
+Without ratios, A and B look identical on `total_rooms`. With ratios, the model can distinguish luxury districts from overcrowded ones.
+
+### Log Transform
+
+Some features have long right tails — most values cluster low, but a few extreme values stretch far out:
+
+```
+Raw population for 5 districts:
+  [320, 450, 510, 38,000, 52,000]
+   ^^^  ^^^  ^^^
+   most districts are here           ← these two outliers dominate the scale
+
+After StandardScaler alone (mean=0, std=1):
+  [-0.43, -0.42, -0.42, 1.27, 1.99]
+   ^^^^^^^^^^^^^^^^^^^^^^^
+   3 districts are crammed into a tiny range — model can barely tell them apart
+
+After log THEN StandardScaler:
+  log: [5.77, 6.11, 6.23, 10.55, 10.86]   ← spread is more even
+  scaled: [-1.05, -0.87, -0.81, 1.47, 1.63]  ← all districts distinguishable now
+```
+
+Applied to: `total_bedrooms`, `total_rooms`, `population`, `households`, `median_income` — all right-skewed.
+
+**Not** applied to `housing_median_age` — it's already roughly uniform (no skew to fix).
+
+### Cluster Similarity
+
+Raw latitude/longitude are just numbers — a linear model can't learn that `(37.77, -122.42)` means "San Francisco" means "expensive":
+
+```
+Raw coordinates:
+  district    latitude    longitude    median_house_value
+  A           37.77       -122.42      $450,000    (San Francisco)
+  B           37.80       -122.27      $420,000    (Oakland — nearby)
+  C           36.75       -119.77      $110,000    (Central Valley — far)
+
+A linear model sees: lat=37.77 vs 36.75 → difference of 1.02
+                     It has no way to know that 1.02° here means
+                     "completely different housing market"
+
+After ClusterSimilarity (10 KMeans centroids):
+                    Bay Area    LA      Central     ...
+                    cluster     cluster  Valley
+  district A        0.94        0.01    0.03        ← very near Bay Area
+  district B        0.87        0.01    0.05        ← also near Bay Area
+  district C        0.02        0.04    0.91        ← Central Valley
+
+Now a linear model can simply learn: high Bay Area similarity → high price
+                                     high Central Valley similarity → low price
+```
+
+RBF kernel: `K(x, c) = exp(-γ · ||x - c||²)` — returns 1.0 at the centroid, fades smoothly to ~0 with distance.
+
+### One-Hot Encoding
+
+`ocean_proximity` is a nominal category — the 5 values have no natural ordering:
+
+```
+Raw data:
+  district    ocean_proximity
+  A           INLAND
+  B           <1H OCEAN
+  C           ISLAND
+
+If we used OrdinalEncoder (integers):
+  A → 1,  B → 0,  C → 2
+
+Problem: the model now thinks ISLAND (2) is "more" than INLAND (1),
+         or that INLAND is the midpoint between <1H OCEAN and ISLAND.
+         None of that is true.
+
+After OneHotEncoder:
+            INLAND  <1H OCEAN  NEAR BAY  NEAR OCEAN  ISLAND
+  A           1        0          0          0          0
+  B           0        1          0          0          0
+  C           0        0          0          0          1
+
+Each category gets its own independent weight. No false ordering imposed.
+The model learns: ISLAND → +$X, INLAND → -$Y, independently.
+```
+
+### Remainder (housing_median_age)
+
+The only column that needs no special engineering — just impute + scale:
+
+```
+Raw data:
+  [15, 29, 35, 42, 52, NaN, 26]
+
+After SimpleImputer(strategy="median"):
+  [15, 29, 35, 42, 52, 35, 26]    ← NaN replaced with median (35)
+
+After StandardScaler:
+  [-1.43, -0.33, 0.14, 0.69, 1.47, 0.14, -0.57]   ← mean=0, std=1
+```
+
+No log needed (already roughly uniform). No ratio needed (it's already a meaningful unit — years). No encoding needed (it's numeric). The default pipeline handles it.
+
+### Summary: raw columns → pipeline → output features
+
+```
+Raw column(s)                   Pipeline              Transform               → Output
+─────────────────────────────   ────────────────      ─────────────────         ──────
+total_bedrooms, total_rooms     bedrooms              impute → ratio → scale   → 1
+total_rooms, households         rooms_per_house       impute → ratio → scale   → 1
+population, households          people_per_house      impute → ratio → scale   → 1
+5 numeric columns               log                   impute → log → scale     → 5
+latitude, longitude             geo (ClusterSimilar.) KMeans → RBF kernel      → 10
+ocean_proximity                 cat (OneHotEncoder)   impute → one-hot         → 5
+housing_median_age              remainder             impute → scale            → 1
+                                                                                 ──
+                                                                                 24 total
+```
+
+---
+
 # Phase 2: Model Exploration
 
 ---
